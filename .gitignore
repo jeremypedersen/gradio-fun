@@ -1,3 +1,6 @@
+# Results files
+speech.mp3
+
 # Gradio stuff
 .gradio
 .gradio/
