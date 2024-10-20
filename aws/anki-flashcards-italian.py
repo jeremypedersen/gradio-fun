@@ -1,19 +1,25 @@
-import jieba, string, boto3, json, os, hashlib
+import string, boto3, json, os, hashlib, nltk
+from nltk.tokenize import word_tokenize
 import gradio as gr
+
+# Make sure to download the necessary resources for NLTK
+nltk.download('punkt')
+nltk.download('punkt_tab')
 
 # Cards directory (hard-coded for now)
 cardsdir = 'cards/'
 
 # Global prompt
-prompt = '''Create flash cards to help an English speaker practice Chinese. 
+prompt = '''Create flash cards to help an English speaker practice Italian. 
 
 Example input: 
-你好
-朋友
+come
+stai
+
 
 Output:
-你好 | hello, nǐ hǎo
-朋友 | friend, péng yǒu
+come | how
+stai | are you
 
 Do not print anything except the requested output. Here is your input:
 {}'''.strip() 
@@ -29,7 +35,7 @@ def make_cards(key, secret, text):
     # Create a Bedrock Runtime client in the AWS Region of your choice.
     bedrock_client = boto3.client("bedrock-runtime", region_name="us-west-2",aws_access_key_id=key, aws_secret_access_key=secret)
 
-    word_list = process_chinese_text(text)
+    word_list = process_italian_text(text)
 
     # Generate flash cards with matching .mp3 files
     flashcard_list = []
@@ -69,8 +75,8 @@ def synthesize_speech(polly_client, text, output_file):
     response = polly_client.synthesize_speech(
         Text=text,
         OutputFormat='mp3',
-        VoiceId='Zhiyu',  # Zhiyu is a Chinese Mandarin voice
-        LanguageCode='cmn-CN'  # cmn-CN is the language code for Mandarin Chinese
+        VoiceId='Carla',  # Choose an Italian voice, e.g., Carla
+        LanguageCode='it-IT'  # Language code for Italian
     )
 
     # Save the audio stream returned by Amazon Polly into an mp3 file
@@ -136,27 +142,30 @@ def invoke_claude_model(bedrock_client, prompt):
 
     return response_text
 
-def process_chinese_text(text):
-    # Define additional Chinese punctuation marks
-    chinese_punctuation = '，。！？；：“”‘’（）【】《》、'
+def process_italian_text(text):
+    # Define Italian-specific punctuation marks (if any)
+    italian_punctuation = '«»—’'
     
-    # Combine English and Chinese punctuation
-    all_punctuation = string.punctuation + chinese_punctuation
+    # Combine English and additional Italian punctuation
+    all_punctuation = string.punctuation + italian_punctuation
     
     # Remove all punctuation from text
     no_punct_text = ''.join(char for char in text if char not in all_punctuation)
     
-    # Use jieba to segment the text into words
-    segmented_words = jieba.lcut(no_punct_text)
+    # Tokenize the text into words using NLTK's word_tokenize function
+    tokenized_words = word_tokenize(no_punct_text)
+    
+    # Convert all words to lowercase (optional, but often useful)
+    tokenized_words = [word.lower() for word in tokenized_words]
     
     # Remove duplicates by converting to a set, then back to a list
-    unique_words = list(set(segmented_words))
+    unique_words = list(set(tokenized_words))
     
     return unique_words
 
 demo = gr.Interface(
     fn=make_cards,
-    inputs=[gr.Textbox(label="Access Key"), gr.Textbox(label="Secret"), gr.Textbox(label="Input dialogue (Chinese)")],
+    inputs=[gr.Textbox(label="Access Key"), gr.Textbox(label="Secret"), gr.Textbox(label="Input dialogue (Italian)")],
     outputs=[gr.File(label="Flashcards")],
 )
 
