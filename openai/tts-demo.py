@@ -15,7 +15,7 @@ def call_tts(key, speech):
 
         response.stream_to_file(speech_file_path)
     except:
-        speech_file_path = "oops.mp3"
+        speech_file_path = "oops.mp3" # Point at a default .mp3 with an error message
 
     return speech_file_path
 
