@@ -1,6 +1,7 @@
 import string, boto3, json, os, hashlib, nltk
 from nltk.tokenize import word_tokenize
 import gradio as gr
+from botocore.exceptions import ClientError
 
 # Make sure to download the necessary resources for NLTK
 nltk.download('punkt')
@@ -24,16 +25,16 @@ stai | are you
 Do not print anything except the requested output. Here is your input:
 {}'''.strip() 
 
-def make_cards(key, secret, text):
+def make_cards(text):
 
     # Ensure that cards directory is present
     os.system('mkdir -p {}'.format(cardsdir))
 
     # Initialize a session using Amazon Polly
-    polly_client = boto3.client('polly', region_name="us-west-2", aws_access_key_id=key, aws_secret_access_key=secret)
+    polly_client = boto3.client('polly', region_name="us-west-2")
     
     # Create a Bedrock Runtime client in the AWS Region of your choice.
-    bedrock_client = boto3.client("bedrock-runtime", region_name="us-west-2",aws_access_key_id=key, aws_secret_access_key=secret)
+    bedrock_client = boto3.client("bedrock-runtime", region_name="us-west-2")
 
     word_list = process_italian_text(text)
 
@@ -97,7 +98,7 @@ def synthesize_speech(polly_client, text, output_file):
     return new_filename
 
 def compute_md5(file_path):
-    """Compute and return the MD5 hash of a given file."""
+    # Compute and return the MD5 hash of a given file.
     md5 = hashlib.md5()
     
     with open(file_path, 'rb') as f:
@@ -165,7 +166,7 @@ def process_italian_text(text):
 
 demo = gr.Interface(
     fn=make_cards,
-    inputs=[gr.Textbox(label="Access Key"), gr.Textbox(label="Secret"), gr.Textbox(label="Input dialogue (Italian)")],
+    inputs=[gr.Textbox(label="Input dialogue (Italian)")],
     outputs=[gr.File(label="Flashcards")],
 )
 
