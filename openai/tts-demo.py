@@ -1,9 +1,9 @@
 import gradio as gr
 from openai import OpenAI
 
-def call_tts(key, speech):
+def call_tts(speech):
 
-    client = OpenAI(api_key=key)
+    client = OpenAI()
 
     try:
         speech_file_path = "speech.mp3"
@@ -21,7 +21,7 @@ def call_tts(key, speech):
 
 demo = gr.Interface(
     fn=call_tts,
-    inputs=[gr.Textbox(label="OpenAI API Key"), gr.Textbox(label="Text to speak")],
+    inputs=[gr.Textbox(label="Text to speak")],
     outputs=[gr.Audio(label="Spoken Output")],
 )
 

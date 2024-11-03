@@ -1,9 +1,9 @@
 import gradio as gr
 from openai import OpenAI
 
-def call_gpt(key, prompt):
+def call_gpt(prompt):
 
-    client = OpenAI(api_key=key)
+    client = OpenAI()
 
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -20,7 +20,7 @@ def call_gpt(key, prompt):
 
 demo = gr.Interface(
     fn=call_gpt,
-    inputs=[gr.Textbox(label="OpenAI API Key"), gr.Textbox(label="Prompt")],
+    inputs=[gr.Textbox(label="Prompt")],
     outputs=[gr.Textbox(label="Model output", show_copy_button=True)],
 )
 

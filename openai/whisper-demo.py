@@ -1,9 +1,9 @@
 import gradio as gr
 from openai import OpenAI
 
-def call_whisper(key, speech_path):
+def call_whisper(speech_path):
 
-    client = OpenAI(api_key=key)
+    client = OpenAI()
 
     try:
         speech_in = open(speech_path, 'rb')
@@ -17,7 +17,7 @@ def call_whisper(key, speech_path):
 
 demo = gr.Interface(
     fn=call_whisper,
-    inputs=[gr.Textbox(label="OpenAI API Key"), gr.Audio(label="Spoken Input", type="filepath")],
+    inputs=[gr.Audio(label="Spoken Input", type="filepath")],
     outputs=[gr.Textbox(label="Transcript")]
 )
 
