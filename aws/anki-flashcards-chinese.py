@@ -1,6 +1,7 @@
 import jieba, string, boto3, json, os, hashlib
 import gradio as gr
 from botocore.exceptions import ClientError
+from time import sleep
 
 # Cards directory (hard-coded for now)
 cardsdir = 'cards/'
@@ -21,6 +22,12 @@ Do not print anything except the requested output. Here is your input:
 
 def make_cards(text):
 
+    # Remove existing cards
+    os.system('rm -rf {}'.format(cardsdir))
+
+    # Remove existing .zip file
+    os.system('rm -rf flashcards.zip')
+
     # Ensure that cards directory is present
     os.system('mkdir -p {}'.format(cardsdir))
 
@@ -34,11 +41,21 @@ def make_cards(text):
 
     # Generate flash cards with matching .mp3 files
     flashcard_list = []
-    for word in word_list:
+
+    # We use a while loop as calls to Bedrock are frequently throttled,
+    # necessitating retries
+    num_words = len(word_list)
+    i = 0
+    while i < num_words:
+        word = word_list[i]
         word_prompt = prompt.format(word)
 
         # Generate Anki-formatted flashcard entry
-        result = invoke_claude_model(bedrock_client, word_prompt)
+        try:
+            result = invoke_claude_model(bedrock_client, word_prompt)
+        except:
+            print("Invoking model failed, sleeping for 5 seconds then re-trying")
+            continue
 
         # Generate spoken word
         filename = synthesize_speech(polly_client, word, 'tmp.mp3')
@@ -48,6 +65,12 @@ def make_cards(text):
 
         # Save to list
         flashcard_list.append(result)
+
+        # Deal with Bedrock's aggressive throttling
+        sleep(0.5)
+
+        # Increment count
+        i += 1
 
     # Write cards to file
     f = open(cardsdir + 'cards.txt', 'w')
