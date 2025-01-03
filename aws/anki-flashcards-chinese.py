@@ -1,12 +1,14 @@
 import jieba, string, boto3, json, os, hashlib
 import gradio as gr
 from botocore.exceptions import ClientError
+import time
 
 # Cards directory (hard-coded for now)
 cardsdir = 'cards/'
 
 # Global prompt (hard-coded for now)
-prompt = '''Create flash cards to help an English speaker practice Chinese. 
+prompt = '''<instructions>
+Create flash cards to help an English speaker practice Chinese. 
 
 Example input: 
 你好
@@ -17,9 +19,18 @@ Output:
 朋友 | friend, péng yǒu
 
 Do not print anything except the requested output. Here is your input:
-{}'''.strip() 
+</instructions>
+<input>
+{}
+</input>'''.strip() 
 
 def make_cards(text):
+
+    # Remove existing cards
+    os.system('rm -rf {}'.format(cardsdir))
+
+    # Remove existing .zip file
+    os.system('rm -rf flashcards.zip')
 
     # Ensure that cards directory is present
     os.system('mkdir -p {}'.format(cardsdir))
@@ -34,11 +45,38 @@ def make_cards(text):
 
     # Generate flash cards with matching .mp3 files
     flashcard_list = []
-    for word in word_list:
+
+    # We use a while loop as calls to Bedrock are frequently throttled,
+    # necessitating retries
+    num_words = len(word_list)
+    i = 0
+    delay = 10 # Adjustable delay to deal with API throttling
+    while i < num_words:
+
+        print(f"CURRENT DELAY: {delay}")
+
+        # We start our loop with a delay, because 
+        # we want to halt here in case of a 'continue'
+        time.sleep(delay)
+
+        # Reduce delay by 1 second each round 
+        # (until next throttling event)
+        if delay > 10:
+            delay = delay - 1
+
+        # Indicate current status, and generate prompt
+        
+        print(f"PROGRESS: {i}/{num_words} cards completed")
+        word = word_list[i]
         word_prompt = prompt.format(word)
 
         # Generate Anki-formatted flashcard entry
-        result = invoke_claude_model(bedrock_client, word_prompt)
+        try:
+            result = invoke_claude_model(bedrock_client, word_prompt)
+        except:
+            delay = delay * 2
+            print(f"WARNING: Invoking model failed, doubling delay, then retrying")
+            continue # Go back to top, try current word or phrase again
 
         # Generate spoken word
         filename = synthesize_speech(polly_client, word, 'tmp.mp3')
@@ -48,6 +86,9 @@ def make_cards(text):
 
         # Save to list
         flashcard_list.append(result)
+
+        # Increment count
+        i += 1
 
     # Write cards to file
     f = open(cardsdir + 'cards.txt', 'w')
