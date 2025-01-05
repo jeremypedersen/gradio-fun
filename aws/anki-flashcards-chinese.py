@@ -32,6 +32,12 @@ def make_cards(text):
     # Remove existing .zip file
     os.system('rm -rf flashcards.zip')
 
+    # Remove existing cards
+    os.system('rm -rf {}'.format(cardsdir))
+
+    # Remove existing .zip file
+    os.system('rm -rf flashcards.zip')
+
     # Ensure that cards directory is present
     os.system('mkdir -p {}'.format(cardsdir))
 
