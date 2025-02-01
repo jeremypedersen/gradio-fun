@@ -2,7 +2,7 @@ import string, boto3, json, os, hashlib, nltk
 from nltk.tokenize import word_tokenize
 import gradio as gr
 from botocore.exceptions import ClientError
-from time import sleep
+import time
 
 # Make sure to download the necessary resources for NLTK
 nltk.download('punkt')
@@ -11,7 +11,7 @@ nltk.download('punkt_tab')
 # Cards directory (hard-coded for now)
 cardsdir = 'cards/'
 
-# Global prompt
+# Global prompts
 prompt = '''Create flash cards to help an English speaker practice Italian. 
 
 Example input: 
@@ -27,6 +27,12 @@ Do not print anything except the requested output. Here is your input:
 {}'''.strip() 
 
 def make_cards(text):
+
+    # Remove existing cards
+    os.system('rm -rf {}'.format(cardsdir))
+
+    # Remove existing .zip file
+    os.system('rm -rf flashcards.zip')
 
     # Remove existing cards
     os.system('rm -rf {}'.format(cardsdir))
@@ -52,12 +58,31 @@ def make_cards(text):
     # necessitating retries
     num_words = len(word_list)
     i = 0
+    delay = 10 # Adjustable delay to deal with API throttling
     while i < num_words:
+
+        print(f"CURRENT DELAY: {delay}")
+
+        # We start our loop with a delay, because 
+        # we want to halt here in case of a 'continue'
+        time.sleep(delay)
+
+        # Reduce delay by 1 second each round 
+        # (until next throttling event)
+        if delay > 10:
+            delay = delay - 1
+
+        print(f"PROGRESS: {i}/{num_words} cards completed")
         word = word_list[i]
         word_prompt = prompt.format(word)
 
         # Generate Anki-formatted flashcard entry
-        result = invoke_claude_model(bedrock_client, word_prompt)
+        try:
+            result = invoke_claude_model(bedrock_client, word_prompt)
+        except:
+            delay = delay * 2
+            print(f"WARNING: Invoking model failed, doubling delay, then retrying")
+            continue # Go back to top, try current word or phrase again
 
         # Generate spoken word
         filename = synthesize_speech(polly_client, word, 'tmp.mp3')
@@ -67,9 +92,6 @@ def make_cards(text):
 
         # Save to list
         flashcard_list.append(result)
-
-        # Deal with Bedrock's aggressive throttling
-        sleep(0.5)
 
         # Increment count
         i += 1
